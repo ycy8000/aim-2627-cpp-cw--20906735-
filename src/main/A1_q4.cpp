@@ -18,7 +18,61 @@ namespace aim::q4 {
 struct CommandResult { long long value; int accepted; int rejected; };
 
 // BEGIN IMPLEMENTATION
-CommandResult execute(const std::vector<std::string>& lines) { throw std::runtime_error("TODO"); }
+const long long kValueLimit = 1000000;
+
+bool in_value_range(long long x) {
+    return x >= -kValueLimit && x <= kValueLimit;
+}
+
+// 完整校验一条命令；成功时把候选结果写入 candidate 并返回 true，失败返回 false。
+// 只计算候选值，不修改累加器，保证事务性。
+bool try_command(const std::string& line, long long current, long long& candidate) {
+    std::istringstream input(line);
+    std::string op;
+    if (!(input >> op)) {
+        return false;  // 空行或只有空白
+    }
+
+    long long next = 0;
+    if (op == "RESET") {
+        next = 0;
+    } else if (op == "ADD" || op == "SET") {
+        long long x = 0;
+        if (!(input >> x)) {
+            return false;  // 缺少参数、非数字或超出 long long
+        }
+        if (!in_value_range(x)) {
+            return false;
+        }
+        next = (op == "ADD") ? current + x : x;
+    } else {
+        return false;  // 未知操作（区分大小写）
+    }
+
+    std::string extra;
+    if (input >> extra) {
+        return false;  // 多余字段或 "12x"、"1.5" 这类后缀
+    }
+    if (!in_value_range(next)) {
+        return false;  // 参数合法但结果越界
+    }
+    candidate = next;
+    return true;
+}
+
+CommandResult execute(const std::vector<std::string>& lines) {
+    CommandResult result{0, 0, 0};
+    for (const std::string& line : lines) {
+        long long candidate = 0;
+        if (try_command(line, result.value, candidate)) {
+            result.value = candidate;
+            ++result.accepted;
+        } else {
+            ++result.rejected;
+        }
+    }
+    return result;
+}
 // END IMPLEMENTATION
 }
 

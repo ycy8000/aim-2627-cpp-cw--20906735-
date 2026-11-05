@@ -19,7 +19,44 @@ struct Telemetry { int id; int hp; };
 struct Summary { int valid; int duplicate; int invalid; long long total_hp; std::vector<int> ids; };
 
 // BEGIN IMPLEMENTATION
-Summary summarize(const std::vector<Telemetry>& frames) { throw std::runtime_error("TODO"); }
+const int kMaxTelemetryId = 9999;
+const int kMinTelemetryHp = -1000;
+const int kMaxTelemetryHp = 1000;
+
+bool legal_record(const Telemetry& frame) {
+    return frame.id >= 0 && frame.id <= kMaxTelemetryId &&
+           frame.hp >= kMinTelemetryHp && frame.hp <= kMaxTelemetryHp;
+}
+
+// 每条记录恰好归入 invalid / duplicate / first-valid 之一：
+// 先做范围校验（非法记录不占用 id），再用标记表去重，最后按 id 顺序扫描标记表输出升序 ids。
+Summary summarize(const std::vector<Telemetry>& frames) {
+    Summary summary{0, 0, 0, 0, {}};
+    std::vector<bool> seen(kMaxTelemetryId + 1, false);  // 每次调用新建，不跨批次泄漏状态
+
+    for (const Telemetry& frame : frames) {
+        if (!legal_record(frame)) {
+            ++summary.invalid;
+            continue;
+        }
+        const std::size_t slot = static_cast<std::size_t>(frame.id);  // 已校验 id 范围
+        if (seen[slot]) {
+            ++summary.duplicate;
+            continue;
+        }
+        seen[slot] = true;
+        ++summary.valid;
+        summary.total_hp += std::clamp(frame.hp, 0, 100);
+    }
+
+    summary.ids.reserve(static_cast<std::size_t>(summary.valid));
+    for (int id = 0; id <= kMaxTelemetryId; ++id) {
+        if (seen[static_cast<std::size_t>(id)]) {
+            summary.ids.push_back(id);
+        }
+    }
+    return summary;
+}
 // END IMPLEMENTATION
 }
 

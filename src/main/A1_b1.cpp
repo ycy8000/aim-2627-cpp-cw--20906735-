@@ -18,7 +18,37 @@ namespace aim::b1 {
 
 
 // BEGIN IMPLEMENTATION
-bool parse_i32(const std::string& text, int& output) { throw std::runtime_error("TODO"); }
+// 语法：可选一个 '+'/'-'，后接至少一位 ASCII 数字，不允许任何其他字符。
+// 用非负 magnitude 累加，并在乘加之前检查 magnitude*10+digit<=limit；
+// limit 正数为 2147483647，负数为 2147483648（上下界不对称）。失败时不写 output。
+bool parse_i32(const std::string& text, int& output) {
+    std::size_t i = 0;
+    bool negative = false;
+    if (i < text.size() && (text[i] == '+' || text[i] == '-')) {
+        negative = (text[i] == '-');
+        ++i;
+    }
+    if (i == text.size()) {
+        return false;  // 空串或只有符号
+    }
+
+    const long long limit = negative ? 2147483648LL : 2147483647LL;
+    long long magnitude = 0;
+    for (; i < text.size(); ++i) {
+        const char c = text[i];
+        if (c < '0' || c > '9') {
+            return false;
+        }
+        const int digit = c - '0';
+        if (magnitude > (limit - digit) / 10) {
+            return false;  // 下一步会超出范围，提前拒绝
+        }
+        magnitude = magnitude * 10 + digit;
+    }
+
+    output = static_cast<int>(negative ? -magnitude : magnitude);
+    return true;
+}
 // END IMPLEMENTATION
 }
 

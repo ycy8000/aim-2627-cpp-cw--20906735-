@@ -18,7 +18,22 @@ namespace aim::b2 {
 
 
 // BEGIN IMPLEMENTATION
-std::size_t compact(int* data, std::size_t n, int low, int high) { throw std::runtime_error("TODO"); }
+// 双指针原地稳定压缩：read 顺序扫描，命中 [low,high] 的值写到 write 位置。
+// write<=read 始终成立，所以写入只覆盖已经读过的元素，不会破坏未读数据。O(n) 时间、O(1) 空间。
+std::size_t compact(int* data, std::size_t n, int low, int high) {
+    if (n == 0 || data == nullptr || low > high) {
+        return 0;
+    }
+    std::size_t write = 0;
+    for (std::size_t read = 0; read < n; ++read) {
+        const int value = data[read];
+        if (value >= low && value <= high) {
+            data[write] = value;
+            ++write;
+        }
+    }
+    return write;
+}
 // END IMPLEMENTATION
 }
 

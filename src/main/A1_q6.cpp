@@ -18,7 +18,48 @@ namespace aim::q6 {
 struct Target { int id; int x; int y; int hp; bool visible; };
 
 // BEGIN IMPLEMENTATION
-int select_target(const std::vector<Target>& targets, int max_range) { throw std::runtime_error("TODO"); }
+// 坐标绝对值 <=1e6，平方和 <=2e12，必须用 long long。
+long long squared_distance(const Target& t) {
+    const long long x = t.x;
+    const long long y = t.y;
+    return x * x + y * y;
+}
+
+// 字典序优先级：hp 小优先，其次距离平方小，最后 id 小。
+bool better_target(const Target& a, long long a_dist, const Target& b, long long b_dist) {
+    if (a.hp != b.hp) {
+        return a.hp < b.hp;
+    }
+    if (a_dist != b_dist) {
+        return a_dist < b_dist;
+    }
+    return a.id < b.id;
+}
+
+int select_target(const std::vector<Target>& targets, int max_range) {
+    if (max_range < 0) {
+        return -1;
+    }
+    const long long range = max_range;
+    const long long range_sq = range * range;
+
+    const Target* best = nullptr;
+    long long best_dist = 0;
+    for (const Target& t : targets) {
+        if (!t.visible || t.hp <= 0) {
+            continue;
+        }
+        const long long dist = squared_distance(t);
+        if (dist > range_sq) {
+            continue;  // 边界 dist==range_sq 合格
+        }
+        if (best == nullptr || better_target(t, dist, *best, best_dist)) {
+            best = &t;
+            best_dist = dist;
+        }
+    }
+    return best == nullptr ? -1 : best->id;
+}
 // END IMPLEMENTATION
 }
 
